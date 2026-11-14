@@ -1,7 +1,7 @@
-import { normalizeVin, isValidFormat, checkDigitValid, originFromVin, vinBreakdown, compareVinEvidence } from './lib/vin.js';
-import { lookupPublicData } from './lib/nhtsa.js';
+import { normalizeVin, isValidFormat, checkDigitValid, originFromVin, vinBreakdown, compareVinEvidence } from './lib/vin.js?v=2';
+import { lookupPublicData } from './lib/nhtsa.js?v=2';
 import { normalizeRecord } from './lib/records.js';
-import { en, ar } from './lib/strings.js';
+import { en, ar } from './lib/strings.js?v=2';
 
 const $ = id => document.getElementById(id);
 const words = { en, ar };

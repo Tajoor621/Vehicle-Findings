@@ -1,4 +1,4 @@
-import { vinBreakdown } from './vin.js';
+import { vinBreakdown } from './vin.js?v=2';
 
 const sources = {
   rkl: { label: 'RKL WMI directory', url: 'https://dot.report/wmi/RKL' },

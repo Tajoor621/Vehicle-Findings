@@ -1,4 +1,4 @@
-import { vinBreakdown } from './vin.js';
+import { vinBreakdown } from './vin.js?v=2';
 import { regionalEvidence } from './evidence.js';
 
 const VPIC = 'https://vpic.nhtsa.dot.gov/api/vehicles';
