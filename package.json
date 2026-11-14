@@ -1,0 +1,14 @@
+{
+  "name": "gulf-vin-check",
+  "version": "1.0.0",
+  "description": "VIN check and vehicle history for GCC",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/app.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
