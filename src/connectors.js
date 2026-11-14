@@ -11,14 +11,17 @@ async function getJson(url, key, vin, fetchImpl) {
 export function normalizeInsurance(d) {
   if (!d || typeof d !== 'object') return { status: 'unknown' };
   const expiry = d.expiry || d.expiryDate || null;
+  const expiryTime = typeof expiry === 'string' ? Date.parse(expiry) : NaN;
+  const today = new Date().toISOString().slice(0, 10);
   let status = d.status;
-  if (!['active', 'expired', 'none'].includes(status)) status = expiry ? (new Date(expiry) >= new Date() ? 'active' : 'expired') : 'unknown';
+  if (!['active', 'expired', 'none'].includes(status)) status = Number.isFinite(expiryTime) ? (expiryTime >= Date.parse(today) ? 'active' : 'expired') : 'unknown';
   return { status, insurer: d.insurer || null, policyType: d.policyType || d.coverage || null, expiry };
 }
 
 export function normalizeAccidents(d) {
   const arr = Array.isArray(d) ? d : d?.accidents || [];
-  return arr.map((a) => ({ date: a.date || null, severity: a.severity || null, totalLoss: !!a.totalLoss,
+  if (!Array.isArray(arr) || (!Array.isArray(d) && !Array.isArray(d?.accidents))) throw new Error('Invalid accidents response');
+  return arr.filter(a => a && typeof a === 'object').map((a) => ({ date: a.date || null, severity: a.severity || null, totalLoss: typeof a.totalLoss === 'boolean' ? a.totalLoss : null,
     description: String(a.description || '').slice(0, 500), source: a.source || null }));
 }
 
@@ -33,7 +36,7 @@ export async function runConnectors(vin, userRecords = [], { env = process.env, 
     catch (e) { out.accidents = { status: 'error', error: e.message, items: [] }; }
   }
   const own = userRecords.filter((r) => r.type === 'accident')
-    .map((r) => ({ date: r.date, severity: null, totalLoss: false, description: r.note, source: `Reported by ${r.source}` }));
+    .map((r) => ({ date: r.date, severity: null, totalLoss: null, description: r.note, source: `Reported by ${r.source}` }));
   out.accidents.items = [...out.accidents.items, ...own];
   return out;
 }

@@ -1,14 +1,14 @@
 {
   "name": "gulf-vin-check",
   "version": "1.0.0",
-  "description": "VIN check and vehicle history for GCC",
+  "description": "Free VIN decoding, US recalls and private vehicle logs for UAE and GCC buyers",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node --env-file-if-exists=.env src/server.js",
     "test": "node --test test/app.test.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

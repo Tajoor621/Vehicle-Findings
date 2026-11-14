@@ -1,0 +1,7 @@
+exclude:
+  - src
+  - test
+  - package.json
+  - Dockerfile
+  - README.md
+  - data

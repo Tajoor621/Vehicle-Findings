@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="Free VIN decoding, US recall searches and a private vehicle log for UAE used-car buyers.">
+  <title>Vehicle Findings</title>
+  <link rel="stylesheet" href="./public/styles.css">
+  <script type="module" src="./public/app.js"></script>
+</head>
+<body>
+<main>
+  <header class="top">
+    <strong>Vehicle Findings</strong><button type="button" class="lang" id="lang" lang="ar">العربية</button>
+  </header>
+  <h1 data-t="title">Know the car before you buy it</h1>
+  <p class="sub" data-t="intro">Check the VIN, review specifications and US recalls, and keep a private vehicle log.</p>
+  <form class="plate" id="lookup">
+    <label for="vin" data-t="vin">VIN (chassis number)</label>
+    <input id="vin" name="vin" autocomplete="off" autocapitalize="characters" spellcheck="false" dir="ltr"
+      placeholder="5UXWX7C50BA023665" aria-describedby="vinHint" maxlength="100" required>
+    <small id="vinHint" data-t="vinHint">17 characters. Spaces are ignored. I, O and Q are never used.</small>
+    <div class="row">
+      <button class="go" type="submit" data-t="check">Check vehicle</button>
+      <button type="button" class="alt" id="scan" data-t="scan">Scan barcode</button>
+      <button type="button" class="alt" id="photo" data-t="photo">Read plate photo</button>
+    </div>
+    <p class="quiet" data-t="privacy">Vehicle matching sends your VIN to NHTSA. Photos and private records stay in this browser.</p>
+    <input id="photoFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden>
+    <video id="cam" hidden playsinline muted></video>
+    <div id="photoPanel" hidden>
+      <img id="preview" alt="" hidden>
+      <div class="row">
+        <button type="button" class="alt" id="choosePhoto" data-t="choosePhoto">Choose another photo</button>
+        <button type="button" class="alt" id="rotate" data-t="rotate">Rotate photo</button>
+        <button type="button" class="alt" id="readArabic" data-t="readArabic">Read Arabic and English</button>
+        <button type="button" class="alt" id="closePhoto" data-t="closePhoto">Close photo</button>
+      </div>
+      <label for="plateText" data-t="plateText">Plate text (check against the photo)</label>
+      <textarea id="plateText" rows="4" dir="auto"></textarea>
+      <button type="button" class="alt" id="usePhotoVin" data-t="usePhotoVin">Use VIN from text</button>
+    </div>
+    <p id="inputStatus" role="status" hidden></p>
+  </form>
+  <p id="lookupStatus" role="status" hidden></p>
+  <noscript>Enable JavaScript to check VINs and manage vehicle records.</noscript>
+  <div id="results" hidden>
+    <div id="report"></div>
+    <section aria-labelledby="recordsHeading">
+      <h2 id="recordsHeading" data-t="records">Private vehicle log</h2>
+      <p class="quiet" data-t="recordsScope">Saved on this browser for this VIN. These entries are owner-reported.</p>
+      <ul id="recordList" class="entries"></ul>
+      <p id="recordEmpty" data-t="recordEmpty">No entries saved for this VIN.</p>
+      <form id="addRecord">
+        <div class="fields">
+          <label><span data-t="type">Type</span><select name="type">
+            <option value="service" data-t="service">Service</option>
+            <option value="accident" data-t="accident">Accident</option>
+            <option value="inspection" data-t="inspection">Inspection</option>
+            <option value="mileage" data-t="mileage">Mileage</option>
+          </select></label>
+          <label><span data-t="date">Date</span><input name="date" type="date" required></label>
+          <label><span data-t="kilometres">Odometer (km)</span><input name="mileage" type="number" min="0" step="1" inputmode="numeric"></label>
+        </div>
+        <label><span data-t="note">Note</span><textarea name="note" maxlength="500" rows="2"></textarea></label>
+        <div class="row">
+          <button class="go" type="submit" data-t="save">Save entry</button>
+          <button class="alt" type="button" id="exportLog" data-t="export">Export this log</button>
+          <button class="alt" type="button" id="importLog" data-t="import">Import log</button>
+        </div>
+      </form>
+      <input id="logFile" type="file" accept=".json,application/json" hidden>
+      <p id="recordStatus" role="status" hidden></p>
+    </section>
+  </div>
+  <section aria-labelledby="officialHeading">
+    <h2 id="officialHeading" data-t="official">Official history checks</h2>
+    <p data-t="officialScope">Accident history, insurance, title, and GCC specification require separate verification. Check the vehicle label and compare records with the seller and manufacturer.</p>
+    <ul class="links">
+      <li><a href="https://portal.moi.gov.ae/eservices/PublicServices/AccidentsInquiry.aspx?Culture=en" target="_blank" rel="noopener noreferrer" id="moi" data-t="moi">UAE Ministry of Interior accident inquiry</a></li>
+      <li><a href="https://www.nhtsa.gov/recalls" target="_blank" rel="noopener noreferrer" data-t="nhtsaRecalls">NHTSA recalls by VIN</a></li>
+      <li><a href="https://vpic.nhtsa.dot.gov/decoder/" target="_blank" rel="noopener noreferrer" data-t="nhtsaVin">NHTSA VIN decoder</a></li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
