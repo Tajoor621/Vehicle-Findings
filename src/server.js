@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
-import { normalizeVin, isValidFormat, checkDigitValid, originFromVin } from './vin.js';
+import { normalizeVin, isValidFormat, checkDigitValid, originFromVin, vinBreakdown } from './vin.js';
 import { lookupPublicData } from './nhtsa.js';
 import { normalizeRecord } from '../public/lib/records.js';
 import { runProviders } from './providers.js';
@@ -16,7 +16,7 @@ const assets = new Map([
   ['/index.html', ['index.html', 'text/html']],
   ['/public/app.js', ['public/app.js', 'text/javascript']],
   ['/public/styles.css', ['public/styles.css', 'text/css']],
-  ...['vin', 'nhtsa', 'records', 'strings'].map(name =>
+  ...['vin', 'nhtsa', 'records', 'strings', 'evidence'].map(name =>
     [`/public/lib/${name}.js`, [`public/lib/${name}.js`, 'text/javascript']]),
 ]);
 
@@ -206,7 +206,7 @@ export function createApp({
       const db = await loadRecords();
       const vehicleRecords = db[vin] || [];
       if (match[2]) return send(res, 200, vehicleRecords);
-      const [{ vehicle, recalls, warnings }, providers, connectors] = await Promise.all([
+      const [{ vehicle, recalls, warnings, regional, wmiEvidence }, providers, connectors] = await Promise.all([
         publicLookup(vin), runProviders(vin, { fetchImpl }), runConnectors(vin, vehicleRecords, { fetchImpl }),
       ]);
       const { components, ...specs } = vehicle || {};
@@ -214,7 +214,7 @@ export function createApp({
         vin, checks: { format: true, checkDigit: checkDigitValid(vin) }, origin: originFromVin(vin),
         vehicle: vehicle ? specs : null, components: components ?? null, recalls, records: vehicleRecords,
         providers, ...connectors, spec: { gccSpec: 'unknown', note: 'Confirm GCC specification from the vehicle label or manufacturer.' },
-        warnings, generatedAt: new Date().toISOString(),
+        breakdown: vinBreakdown(vin), regional, wmiEvidence, warnings, generatedAt: new Date().toISOString(),
       });
     } catch (error) {
       if (res.headersSent || res.destroyed) return;

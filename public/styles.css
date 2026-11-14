@@ -58,3 +58,6 @@ button:disabled{cursor:not-allowed;opacity:.65}
 dl{grid-template-columns:minmax(5rem,auto) minmax(0,1fr)}
 h3{font-size:1rem;margin:.9rem 0 .2rem}
 pre{overflow:auto}
+
+#evidenceVin{display:block;width:100%;max-width:28rem;margin-block-start:.3rem;padding:.5rem .65rem;border:1px solid var(--line);border-radius:.4rem;background:var(--panel);color:var(--ink);font-family:ui-monospace,monospace}
+#report dd small,#report .msg small{display:block;margin-block-start:.3rem;overflow-wrap:anywhere}

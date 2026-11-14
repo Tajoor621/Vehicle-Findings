@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { normalizeVin, isValidFormat, checkDigitValid, originFromVin } from '../src/vin.js';
+import { normalizeVin, isValidFormat, checkDigitValid, originFromVin, vinBreakdown, compareVinEvidence } from '../src/vin.js';
+import { regionalEvidence } from '../public/lib/evidence.js';
 import { lookupPublicData } from '../src/nhtsa.js';
 import { normalizeRecord } from '../public/lib/records.js';
 import { ar, en } from '../public/lib/strings.js';
@@ -68,7 +69,7 @@ test('static entry and modules are compatible with project Pages, and English an
   assert.match(html, /\.\/public\/app.js/);
   for (const key of html.matchAll(/data-t="([^"]+)"/g)) assert.ok(en[key[1]], key[1]);
   assert.deepEqual(Object.keys(en).sort(), Object.keys(ar).sort());
-  for (const asset of ['app.js', 'styles.css', 'lib/vin.js', 'lib/nhtsa.js', 'lib/records.js', 'lib/strings.js']) {
+  for (const asset of ['app.js', 'styles.css', 'lib/vin.js', 'lib/nhtsa.js', 'lib/evidence.js', 'lib/records.js', 'lib/strings.js']) {
     assert.equal((await fetch(`${base}/public/${asset}`)).status, 200);
   }
   assert.equal((await fetch(`${base}/src/server.js`)).status, 404);
@@ -110,4 +111,51 @@ test('connector data distinguishes unknown from a confirmed false', () => {
   assert.equal(normalizeAccidents([{ totalLoss: 'false' }])[0].totalLoss, null);
   assert.equal(normalizeAccidents([{ totalLoss: false }])[0].totalLoss, false);
   assert.throws(() => normalizeAccidents({ unexpected: [] }));
+});
+
+const screenshotVin = 'RKLBB9HE5E5020250';
+
+test('screenshot VIN exposes its actual characters and a repeating year code', () => {
+  assert.deepEqual(vinBreakdown(screenshotVin, 2050), {
+    wmi: 'RKL', descriptor: 'BB9HE', checkCharacter: '5', expectedCheckDigit: '5',
+    yearCode: 'E', candidateYears: [1984, 2014, 2044], plantCode: '5',
+    sequence: '020250', masked: 'RKLBB9HE5E5******', lowVolumeWmi: null,
+  });
+  assert.equal(vinBreakdown('RKLBB9HE5U5020250').candidateYears.length, 0);
+  assert.equal(vinBreakdown('RKLBB9HE5E502025O'), null);
+  assert.equal(vinBreakdown('1T9131RX8SC123456').lowVolumeWmi, '1T9123');
+});
+
+test('listing comparison distinguishes prefix, exact match, and a conflicting VIN', () => {
+  assert.equal(compareVinEvidence(screenshotVin, 'rklbb9he5e5******'), 'maskedMatch');
+  assert.equal(compareVinEvidence(screenshotVin, 'RKLBB9HE5E5••••••'), 'maskedMatch');
+  assert.equal(compareVinEvidence(screenshotVin, screenshotVin), 'fullMatch');
+  assert.equal(compareVinEvidence(screenshotVin, 'RKLBB9HE5E5020251'), 'differentVin');
+  assert.equal(compareVinEvidence(screenshotVin, 'RKLBB9HE5F5******'), 'differentVin');
+  assert.equal(compareVinEvidence(screenshotVin, '*****************'), 'invalidEvidence');
+});
+
+test('regional evidence remains a lead and never generates an exact VIN spec, recall or history result', async () => {
+  assert.equal(regionalEvidence(screenshotVin).manufacturer.country, 'Taiwan');
+  assert.equal(regionalEvidence(screenshotVin).pattern.model, 'Corolla');
+  assert.equal(regionalEvidence('RKLBB9HE5F5020250').pattern, null);
+  assert.equal(regionalEvidence('RKLBB9HE4E5020250').pattern, null);
+  const report = await lookupPublicData(screenshotVin, { fetchImpl: async url => {
+    assert.match(url, /DecodeVinValues/);
+    return json({ Results: [{ ErrorCode: '7', ErrorText: 'No US manufacturer record' }] });
+  } });
+  assert.equal(report.vehicle.make, null);
+  assert.equal(report.vehicle.components.engine.displacementL, null);
+  assert.equal(report.vehicle.plantCity, null);
+  assert.equal(report.recalls, null);
+  assert.equal(report.regional.pattern.masked, 'RKLBB9HE5E5******');
+});
+
+test('WMI fallback identifies the manufacturer separately from unverified vehicle specs', async () => {
+  const report = await lookupPublicData(vin, { fetchImpl: async url => url.includes('DecodeWMI/1M8')
+    ? json({ Results: [{ ManufacturerName: 'Example Manufacturer', Make: 'Example' }] })
+    : json({ Results: [{}] }) });
+  assert.equal(report.wmiEvidence.manufacturer, 'Example Manufacturer');
+  assert.equal(report.vehicle.model, null);
+  assert.equal(report.recalls, null);
 });

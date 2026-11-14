@@ -47,6 +47,17 @@
   <noscript>Enable JavaScript to check VINs and manage vehicle records.</noscript>
   <div id="results" hidden>
     <div id="report"></div>
+    <section aria-labelledby="evidenceHeading">
+      <h2 id="evidenceHeading" data-t="compareTitle">Compare a listing or document</h2>
+      <p data-t="compareScope">Enter the VIN as shown by the source. Keep asterisks where characters are hidden.</p>
+      <form id="compareEvidence">
+        <label><span data-t="evidenceVin">VIN shown by the source</span>
+          <input id="evidenceVin" dir="ltr" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="100" required>
+        </label>
+        <div class="row"><button type="submit" class="alt" data-t="compare">Compare VINs</button></div>
+      </form>
+      <p role="status" id="evidenceStatus" hidden></p>
+    </section>
     <section aria-labelledby="recordsHeading">
       <h2 id="recordsHeading" data-t="records">Private vehicle log</h2>
       <p class="quiet" data-t="recordsScope">Saved on this browser for this VIN. These entries are owner-reported.</p>
@@ -77,8 +88,14 @@
   <section aria-labelledby="officialHeading">
     <h2 id="officialHeading" data-t="official">Official history checks</h2>
     <p data-t="officialScope">Accident history, insurance, title, and GCC specification require separate verification. Check the vehicle label and compare records with the seller and manufacturer.</p>
+    <div id="listingSearch" hidden>
+      <p class="quiet" data-t="searchScope">This search sends the visible 11-character prefix to the search engine. Compare any listing against the complete VIN before relying on it.</p>
+      <a id="searchPrefix" target="_blank" rel="noopener noreferrer" data-t="searchPrefix">Search public listings by VIN prefix</a>
+    </div>
     <ul class="links">
       <li><a href="https://portal.moi.gov.ae/eservices/PublicServices/AccidentsInquiry.aspx?Culture=en" target="_blank" rel="noopener noreferrer" id="moi" data-t="moi">UAE Ministry of Interior accident inquiry</a></li>
+      <li><a href="https://www.rta.ae/wps/portal/rta/ae/home/rta-services/service-details?lang=en&amp;serviceId=485" target="_blank" rel="noopener noreferrer" data-t="rta">Dubai RTA Technical Vehicle Status Report (fee applies)</a></li>
+      <li id="toyotaRecall" hidden><a href="https://www.toyota.ae/en/articles/recall-takata/" id="toyotaRecallLink" target="_blank" rel="noopener noreferrer" data-t="toyotaRecall">Toyota UAE Takata recall VIN check</a></li>
       <li><a href="https://www.nhtsa.gov/recalls" target="_blank" rel="noopener noreferrer" data-t="nhtsaRecalls">NHTSA recalls by VIN</a></li>
       <li><a href="https://vpic.nhtsa.dot.gov/decoder/" target="_blank" rel="noopener noreferrer" data-t="nhtsaVin">NHTSA VIN decoder</a></li>
     </ul>

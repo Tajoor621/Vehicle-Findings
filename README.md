@@ -2,7 +2,9 @@
 
 [Open the free app](https://tajoor621.github.io/Vehicle-Findings/). Built for UAE and GCC used-car buyers. The public app runs on GitHub Pages without an account, backend, subscription, or API key.
 
-- Check a 17-character VIN, its manufacturer identifier and its check digit. The check digit convention varies by market. The approximate VIN region and the decoded assembly country describe different things.
+- Break down a 17-character VIN into manufacturer identifier, descriptor, printed and calculated check digit, year-code candidates, plant code, and ending characters. Year codes repeat, and the layout may vary by market.
+- When vehicle-level data is incomplete, look for manufacturer evidence by WMI. The sourced Kuozui/Toyota rule and masked 2014 Corolla listing are leads with limited coverage. They leave the engine, transmission, exact plant, GCC specification, and history unverified.
+- Compare a full or masked VIN from a public listing or document locally. An optional listing search shares only the first 11 characters with the search engine after clicking the link. The workshop API includes the same breakdown and regional evidence.
 - See available specifications from NHTSA vPIC and US recall campaigns by make, model and year. Confirm whether a specific VIN is affected and whether the repair was completed with NHTSA or the manufacturer. Results can be incomplete for non-US vehicles.
 - Switch between English and Arabic. Scan a VIN barcode when the browser supports camera access and BarcodeDetector. Read a plate photo with Tesseract.js in the browser, review the text, and move the VIN into the search field. The first read downloads OCR software and language data from public CDNs. The photo itself stays on the device. Camera and photo support vary by device.
 - Save service, accident, inspection and mileage entries privately per VIN. Export a JSON backup before clearing browser data or moving devices. Import checks the VIN and skips duplicate entries.

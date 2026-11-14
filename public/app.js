@@ -1,4 +1,4 @@
-import { normalizeVin, isValidFormat, checkDigitValid, originFromVin } from './lib/vin.js';
+import { normalizeVin, isValidFormat, checkDigitValid, originFromVin, vinBreakdown, compareVinEvidence } from './lib/vin.js';
 import { lookupPublicData } from './lib/nhtsa.js';
 import { normalizeRecord } from './lib/records.js';
 import { en, ar } from './lib/strings.js';
@@ -46,6 +46,7 @@ function updateLanguage() {
   $('lang').textContent = lang === 'en' ? 'العربية' : 'English';
   $('lang').lang = lang === 'en' ? 'ar' : 'en';
   $('moi').href = `https://portal.moi.gov.ae/eservices/PublicServices/AccidentsInquiry.aspx?Culture=${lang}`;
+  $('toyotaRecallLink').href = `https://www.toyota.ae/${lang}/articles/recall-takata/`;
   $('scan').textContent = t(camera ? 'stopScan' : 'scan');
   if (report) renderReport();
   if (vin) renderLog();
@@ -107,34 +108,97 @@ function connectedSections(data) {
   return sections;
 }
 
-function renderReport() {
-  const { vehicle, recalls, warnings } = report;
+function evidenceLinks(...sources) {
+  const list = el('ul', null, 'links');
+  for (const { label, url } of sources) {
+    const link = el('a', label);
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    const item = el('li');
+    item.append(link);
+    list.append(item);
+  }
+  return list;
+}
+
+function breakdownSection() {
+  const parts = vinBreakdown(vin);
   const origin = originFromVin(vin);
-  const digit = checkDigitValid(vin);
-  const heading = fields({ vin, wmi: origin.wmi, region: origin.region, country: origin.country, digit: t(digit ? 'digitYes' : 'digitNo') });
-  const identification = section('vehicle', heading);
+  return section('breakdown', el('p', t('structureScope'), 'quiet'), fields({
+    wmi: parts.wmi, lowVolumeWmi: parts.lowVolumeWmi, region: origin.region, country: origin.country,
+    descriptor: parts.descriptor, checkCharacter: parts.checkCharacter, expected: parts.expectedCheckDigit,
+    digit: t(checkDigitValid(vin) ? 'digitYes' : 'digitNo'),
+    structureYear: parts.yearCode, yearCandidates: parts.candidateYears.join(' / ') || t('noYearCode'),
+    plantCode: parts.plantCode, sequence: parts.sequence, maskedVin: parts.masked,
+  }), el('p', t('yearScope'), 'quiet'), evidenceLinks({
+    label: t('vinRules'), url: 'https://www.law.cornell.edu/cfr/text/49/565.25',
+  }));
+}
+
+function renderReport() {
+  const { vehicle, recalls, warnings, regional, wmiEvidence } = report;
+  const { make, model, year, trim, body, manufacturer, vehicleType, plantCountry, plantCity, plantState, plantCompany, ...details } = vehicle || {};
+  const identification = section('vehicle', fields({ vin }));
   for (const warning of warnings || []) identification.append(el('p', t(warning), 'msg'));
-  const { make, model, year, trim, body, plantCountry, ...details } = vehicle || {};
-  if (make || model || year || plantCountry) identification.append(fields({ make, model, year, trim, body, plantCountry }));
-  if (vehicle && !make && !model) identification.append(el('p', t('unknownVehicle')));
+  const facts = fields({ make, model, year, trim, body, manufacturer, vehicleType, plantCountry, plantCity, plantState, plantCompany });
+  if (facts.children.length) {
+    identification.append(facts, evidenceLinks({ label: t('officialDecode'), url: 'https://vpic.nhtsa.dot.gov/decoder/' }));
+  }
+  if (vehicle && !(make && model)) identification.append(el('p', t('unknownVehicle')));
   if (details.decodeStatus && details.decodeCode?.split(',').some(code => code.trim() !== '0')) {
     const warning = el('p', t('uncertain'), 'msg');
     warning.append(el('small', details.decodeStatus));
     identification.append(warning);
   }
   identification.append(el('p', t('decodeScope'), 'quiet'));
+
+  const evidence = [];
+  if (wmiEvidence) {
+    const { country, ...wmi } = wmiEvidence;
+    evidence.push(section('vpicWmi', fields({ ...wmi, manufacturerCountry: country }),
+      evidenceLinks({ label: t('vpicWmi'), url: 'https://vpic.nhtsa.dot.gov/mid/home' })));
+  }
+  if (regional?.manufacturer) {
+    const { country, sources, ...wmi } = regional.manufacturer;
+    evidence.push(section('regionalWmi', fields({ ...wmi, manufacturerCountry: country }), evidenceLinks(...sources)));
+  }
+  if (regional?.pattern) {
+    const { sources, masked, ...pattern } = regional.pattern;
+    const lead = section('listingLead', fields({ ...pattern, maskedVin: masked }), el('p', t('listingScope'), 'msg'));
+    if (regional.context) lead.append(el('p', t('productionContext')));
+    lead.append(evidenceLinks(...sources));
+    evidence.push(lead);
+  }
+  const prefix = vinBreakdown(vin).masked.slice(0, 11);
+  const query = new URLSearchParams({ q: `"${prefix}" VIN auction` });
+  $('searchPrefix').href = `https://www.google.com/search?${query}`;
+  $('listingSearch').hidden = false;
+  $('toyotaRecall').hidden = ![make, wmiEvidence?.make, regional?.manufacturer?.make]
+    .some(value => value?.toLowerCase() === 'toyota');
+
+  const specs = report.components || details.components || {};
   const components = [];
-  for (const [key, values] of Object.entries(report.components || details.components || {})) {
+  for (const [key, values] of Object.entries(specs)) {
     const list = fields(values);
     if (list.children.length) components.push(el('h3', t(key)), list);
   }
+  const missing = Object.entries({
+    make: make || wmiEvidence?.make || regional?.manufacturer?.make, model, year, body, engineSize: specs.engine?.displacementL, fuelType: specs.engine?.fuel,
+    transmissionType: specs.transmission?.style, assemblyPlant: plantCity || plantCompany,
+  }).filter(([, value]) => !value).map(([key]) => t(key));
+  const missingSection = missing.length ? [section('missingSpecs', el('p', missing.join(' · ')), el('p', t('missingSpecsScope'), 'quiet'))] : [];
   const campaigns = recalls?.length
     ? recalls.map(item => entry(item.component ?? t('campaign'), el('span', item.summary), ...paragraphs({
       campaign: item.campaign, date: item.date, consequence: item.consequence, remedy: item.remedy,
     })))
     : [el('p', t(recalls ? 'noRecalls' : 'recallUnavailable'))];
-  $('report').replaceChildren(identification, ...(components.length ? [section('components', ...components)] : []),
-    section('recalls', el('p', t('recallScope'), 'quiet'), ...campaigns), ...connectedSections(report));
+  const history = section('historyStatus', fields(Object.fromEntries(
+    ['historyAccident', 'historyOdometer', 'historyGcc', 'historyInsurance'].map(key => [key, t('separateCheck')])
+  )));
+  $('report').replaceChildren(identification, ...evidence, breakdownSection(),
+    ...(components.length ? [section('components', ...components)] : []), ...missingSection,
+    section('recalls', el('p', t('recallScope'), 'quiet'), ...campaigns), history, ...connectedSections(report));
 }
 
 const backend = !location.hostname.endsWith('.github.io')
@@ -153,6 +217,10 @@ $('lookup').addEventListener('submit', async event => {
   report = null;
   vin = undefined;
   $('addRecord').reset();
+  $('compareEvidence').reset();
+  $('toyotaRecall').hidden = true;
+  $('listingSearch').hidden = true;
+  status('evidenceStatus', null);
   status('recordStatus', null);
   if (!isValidFormat(next)) {
     $('vin').setAttribute('aria-invalid', 'true');
@@ -183,7 +251,14 @@ $('lookup').addEventListener('submit', async event => {
   renderReport();
   renderLog();
   $('results').hidden = false;
-  status('lookupStatus', 'ready');
+  status('lookupStatus', result.vehicle?.make && result.vehicle.model && result.vehicle.year ? 'ready' : 'partial');
+});
+
+$('compareEvidence').addEventListener('submit', event => {
+  event.preventDefault();
+  if (!vin) return;
+  const comparison = compareVinEvidence(vin, $('evidenceVin').value);
+  status('evidenceStatus', comparison, comparison === 'differentVin' || comparison === 'invalidEvidence');
 });
 
 $('vin').addEventListener('input', () => $('vin').removeAttribute('aria-invalid'));

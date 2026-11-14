@@ -8,15 +8,47 @@ export const normalizeVin = (v) => typeof v === 'string'
 export const isValidFormat = (vin) => /^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
 
 // A failed check digit can be legitimate outside markets that require it.
-export function checkDigitValid(vin) {
-  if (!isValidFormat(vin)) return false;
+export function expectedCheckDigit(vin) {
+  if (!isValidFormat(vin)) return null;
   let sum = 0;
   for (let i = 0; i < 17; i++) {
     const c = vin[i];
     sum += (/\d/.test(c) ? Number(c) : TRANSLIT[c]) * WEIGHTS[i];
   }
   const r = sum % 11;
-  return vin[8] === (r === 10 ? 'X' : String(r));
+  return r === 10 ? 'X' : String(r);
+}
+
+export function checkDigitValid(vin) {
+  return isValidFormat(vin) && vin[8] === expectedCheckDigit(vin);
+}
+
+const YEAR_CODES = 'ABCDEFGHJKLMNPRSTVWXY123456789';
+
+export function vinBreakdown(vin, latestYear = new Date().getFullYear() + 2) {
+  if (!isValidFormat(vin)) return null;
+  const yearCode = vin[9];
+  const index = YEAR_CODES.indexOf(yearCode);
+  const candidateYears = [];
+  if (index >= 0) {
+    for (let year = 1980 + index; year <= latestYear; year += 30) candidateYears.push(year);
+  }
+  return {
+    wmi: vin.slice(0, 3), descriptor: vin.slice(3, 8), checkCharacter: vin[8],
+    expectedCheckDigit: expectedCheckDigit(vin), yearCode, candidateYears,
+    plantCode: vin[10], sequence: vin.slice(11), masked: vin.slice(0, 11) + '******',
+    lowVolumeWmi: vin[2] === '9' ? vin.slice(0, 3) + vin.slice(11, 14) : null,
+  };
+}
+
+export function compareVinEvidence(vin, candidate) {
+  const value = normalizeVin(candidate).replace(/[•●]/g, '*');
+  if (!isValidFormat(vin)) return 'invalidEvidence';
+  if (isValidFormat(value)) return vin === value ? 'fullMatch' : 'differentVin';
+  const visible = value.replace(/\*/g, '');
+  if (value.length !== 17 || !/^[A-HJ-NPR-Z0-9*]+$/.test(value) ||
+      !value.includes('*') || visible.length < 3) return 'invalidEvidence';
+  return [...value].every((char, index) => char === '*' || char === vin[index]) ? 'maskedMatch' : 'differentVin';
 }
 
 const COUNTRY = { J:'Japan', K:'South Korea', L:'China', W:'Germany', Z:'Italy', S:'United Kingdom',
